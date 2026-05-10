@@ -93,26 +93,41 @@ uv pip install --python .venv/bin/python \
     ninja
 ok "パッケージインストール完了"
 
-# ── 7. DeepSpeed カーネルのビルド確認 ────────────────────────
+# ── 6.5 FlashAttention 2 のインストール (Ampere 以上で有効) ──
+echo ""
+info "GPU の compute capability を確認中..."
+CUDA_CC=$($PYTHON -c "import torch; print(torch.cuda.get_device_capability(0)[0])" 2>/dev/null || echo "0")
+if [[ "$CUDA_CC" -ge 8 ]]; then
+    info "compute capability ${CUDA_CC}.x → FlashAttention2 をインストール中..."
+    if uv pip install --python .venv/bin/python flash-attn --no-build-isolation; then
+        ok "FlashAttention2 インストール完了"
+    else
+        warn "FlashAttention2 のインストールに失敗しました (sdpa にフォールバック)"
+    fi
+else
+    warn "GPU が Ampere 未満のため FlashAttention2 をスキップ (sdpa を使用)"
+fi
+
+# ── 7. DeepSpeed バージョン確認 ──────────────────────────────
 echo ""
 info "DeepSpeed バージョン確認..."
 $PYTHON -c "import deepspeed; print('DeepSpeed:', deepspeed.__version__)"
 
-# ── 8. Alpaca データのダウンロード ────────────────────────────
+# ── 8. Magpie データのダウンロード ────────────────────────────
 echo ""
-if [[ -f "alpaca_data.json" ]]; then
-    RECORD_COUNT=$(python3 -c "import json; d=json.load(open('alpaca_data.json')); print(len(d))" 2>/dev/null || echo "?")
-    warn "alpaca_data.json が既に存在します (${RECORD_COUNT} 件)。スキップします。"
+if [[ -f "magpie_data.json" ]]; then
+    RECORD_COUNT=$(python3 -c "import json; d=json.load(open('magpie_data.json')); print(len(d))" 2>/dev/null || echo "?")
+    warn "magpie_data.json が既に存在します (${RECORD_COUNT} 件)。スキップします。"
     read -rp "$(echo -e "${CYAN}再ダウンロードしますか? [y/N]: ${NC}")" REDOWNLOAD
     if [[ "${REDOWNLOAD:-N}" =~ ^[Yy]$ ]]; then
-        info "Alpaca データをダウンロード中..."
-        $PYTHON save_alpaca.py
+        info "Magpie データをダウンロード中..."
+        $PYTHON save_magpie.py
     fi
 else
-    info "Alpaca データをダウンロード中..."
-    $PYTHON save_alpaca.py
+    info "Magpie データをダウンロード中..."
+    $PYTHON save_magpie.py
 fi
-ok "alpaca_data.json 準備完了"
+ok "magpie_data.json 準備完了"
 
 # ── 9. 完了メッセージ ────────────────────────────────────────
 echo ""

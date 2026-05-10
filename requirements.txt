@@ -9,3 +9,5 @@ sentencepiece
 protobuf
 packaging
 ninja
+# FlashAttention2 は setup.sh で --no-build-isolation 付きで個別インストール
+# flash-attn>=2.5.0
