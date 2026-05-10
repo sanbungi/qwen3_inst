@@ -74,12 +74,32 @@ fi
 
 PYTHON=".venv/bin/python"
 
-# ── 6. 依存パッケージのインストール ──────────────────────────
+# ── 6. GPU 世代の判定 → PyTorch ビルド選択 ───────────────────
 echo ""
-info "パッケージをインストール中 (uv pip)..."
-uv pip install --python .venv/bin/python \
-    torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+info "GPU の compute capability を確認中..."
+GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -n1)
+# nvidia-smi compute_cap (例: "8.9", "12.0")
+GPU_CC=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -n1 | tr -d '.')
+GPU_CC_MAJOR=$(echo "$GPU_CC" | cut -c1-2)
+if [[ ${#GPU_CC} -le 2 ]]; then GPU_CC_MAJOR=$(echo "$GPU_CC" | cut -c1); fi
+info "GPU: ${GPU_NAME} (sm_${GPU_CC})"
 
+# Blackwell 以上 (sm_100 / sm_120) は cu128 nightly が必要
+if [[ "$GPU_CC" == "120" ]] || [[ "$GPU_CC" == "100" ]]; then
+    TORCH_INDEX="https://download.pytorch.org/whl/nightly/cu128"
+    TORCH_PRE="--pre"
+    info "Blackwell 検出 → PyTorch nightly cu128 を使用"
+else
+    TORCH_INDEX="https://download.pytorch.org/whl/cu124"
+    TORCH_PRE=""
+    info "PyTorch stable cu124 を使用"
+fi
+
+info "PyTorch をインストール中..."
+uv pip install --python .venv/bin/python ${TORCH_PRE} \
+    torch torchvision torchaudio --index-url "${TORCH_INDEX}"
+
+info "その他のパッケージをインストール中..."
 uv pip install --python .venv/bin/python \
     setuptools \
     wheel \
@@ -95,7 +115,6 @@ ok "パッケージインストール完了"
 
 # ── 6.5 FlashAttention 2 のインストール (Ampere 以上で有効) ──
 echo ""
-info "GPU の compute capability を確認中..."
 CUDA_CC=$($PYTHON -c "import torch; print(torch.cuda.get_device_capability(0)[0])" 2>/dev/null || echo "0")
 if [[ "$CUDA_CC" -ge 8 ]]; then
     info "compute capability ${CUDA_CC}.x → FlashAttention2 をインストール中..."
