@@ -1,0 +1,9 @@
+# torch は setup.sh で CUDA バージョン指定インストールするため除外
+transformers>=4.51.0
+accelerate>=1.0.0
+deepspeed>=0.15.0
+datasets>=3.0.0
+sentencepiece
+protobuf
+packaging
+ninja
