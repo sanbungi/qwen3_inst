@@ -141,7 +141,7 @@ def train() -> None:
         gradient_accumulation_steps=args.grad_accum,
         learning_rate=args.lr,
         lr_scheduler_type="cosine",
-        warmup_ratio=0.03,
+        warmup_steps=100,
         bf16=True,
         logging_steps=10,
         save_strategy="steps",
@@ -158,7 +158,7 @@ def train() -> None:
         model=model,
         args=training_args,
         train_dataset=dataset,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
     )
 
     print("[info] 学習を開始します...")
