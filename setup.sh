@@ -72,8 +72,7 @@ else
     ok ".venv は既に存在します。スキップします。"
 fi
 
-# uv run で仮想環境を使う (source 不要)
-UV="uv run --python .venv/bin/python"
+PYTHON=".venv/bin/python"
 
 # ── 6. 依存パッケージのインストール ──────────────────────────
 echo ""
@@ -82,6 +81,8 @@ uv pip install --python .venv/bin/python \
     torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 uv pip install --python .venv/bin/python \
+    setuptools \
+    wheel \
     transformers \
     accelerate \
     deepspeed \
@@ -95,7 +96,7 @@ ok "パッケージインストール完了"
 # ── 7. DeepSpeed カーネルのビルド確認 ────────────────────────
 echo ""
 info "DeepSpeed バージョン確認..."
-$UV -c "import deepspeed; print('DeepSpeed:', deepspeed.__version__)"
+$PYTHON -c "import deepspeed; print('DeepSpeed:', deepspeed.__version__)"
 
 # ── 8. Alpaca データのダウンロード ────────────────────────────
 echo ""
@@ -105,29 +106,28 @@ if [[ -f "alpaca_data.json" ]]; then
     read -rp "$(echo -e "${CYAN}再ダウンロードしますか? [y/N]: ${NC}")" REDOWNLOAD
     if [[ "${REDOWNLOAD:-N}" =~ ^[Yy]$ ]]; then
         info "Alpaca データをダウンロード中..."
-        $UV save_alpaca.py
+        $PYTHON save_alpaca.py
     fi
 else
     info "Alpaca データをダウンロード中..."
-    $UV save_alpaca.py
+    $PYTHON save_alpaca.py
 fi
 ok "alpaca_data.json 準備完了"
 
-# ── 9. GPU 数を run_train.sh に書き込む ───────────────────────
-echo ""
-info "run_train.sh を GPU 数 ${NUM_GPUS} で更新中..."
-sed -i "s/^NUM_GPUS=.*/NUM_GPUS=${NUM_GPUS}/" run_train.sh
-ok "run_train.sh 更新完了"
-
-# ── 10. 完了メッセージ ────────────────────────────────────────
+# ── 9. 完了メッセージ ────────────────────────────────────────
 echo ""
 echo "============================================================"
 ok "セットアップ完了！"
 echo ""
-echo "  学習を開始するには:"
-echo -e "  ${CYAN}bash run_train.sh${NC}"
+echo "  通常の学習コマンド (24GB x ${NUM_GPUS} GPU 推奨):"
+echo -e "  ${CYAN}.venv/bin/deepspeed --num_gpus=${NUM_GPUS} train.py \\\\${NC}"
+echo -e "  ${CYAN}    --batch_size 2 --grad_accum 8 --max_length 512 --epochs 1${NC}"
 echo ""
-echo "  または直接:"
-echo -e "  ${CYAN}deepspeed --num_gpus=${NUM_GPUS} train.py${NC}"
+echo "  VRAM が厳しい場合 (CPU offload, 遅いがメモリ節約):"
+echo -e "  ${CYAN}.venv/bin/deepspeed --num_gpus=${NUM_GPUS} train.py \\\\${NC}"
+echo -e "  ${CYAN}    --deepspeed ./ds_config_offload.json \\\\${NC}"
+echo -e "  ${CYAN}    --batch_size 1 --grad_accum 16 --max_length 512 --epochs 1${NC}"
+echo ""
+echo "  ※ batch_size と grad_accum は ds_config*.json と一致させる必要があります"
 echo "============================================================"
 echo ""

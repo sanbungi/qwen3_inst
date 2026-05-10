@@ -1,4 +1,6 @@
-# torch は setup.sh で CUDA バージョン指定インストールするため除外
+# torch は setup.sh で CUDA 指定インストールするため除外
+setuptools
+wheel
 transformers>=4.51.0
 accelerate>=1.0.0
 deepspeed>=0.15.0
